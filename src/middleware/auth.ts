@@ -1,5 +1,6 @@
-import authConfig from '../config/auth.json';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export default (request: any, response: any, next: any) => {
   const auth = request.headers.authorization;
@@ -14,7 +15,7 @@ export default (request: any, response: any, next: any) => {
 
   if (!/^Bearer$/i.test(format)) return response.status(401).json({ message: 'Token is not formatted' });
 
-  jwt.verify(token, authConfig.secret, (error: any, decoded: any) => {
+  jwt.verify(token, String(process.env.SECRET), (error: any, decoded: any) => {
     if (error) return response.status(401).json({ message: "Invalid token" });
 
     request.usuarioId = decoded.id;

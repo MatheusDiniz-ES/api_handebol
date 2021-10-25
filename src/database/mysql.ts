@@ -1,6 +1,7 @@
 import mysql from 'mysql2';
 
-import authConfig from '../config/auth.json';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // const connection = mysql.createConnection({
 //     host: 'localhost',
@@ -11,7 +12,7 @@ import authConfig from '../config/auth.json';
 const connection = mysql.createConnection({
     host: '45.89.204.6',
     user: "u899272621_handebol_itape",
-    password: authConfig.password_online,
+    password: process.env.PASSWORD_ONLINE,
     database: 'u899272621_handebol_itape'
 });
 

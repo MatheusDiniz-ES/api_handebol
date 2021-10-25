@@ -1,12 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import db from './models';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 import usuariosRoutes from './routes/usuarios.routes';
 app.use('/usuarios', usuariosRoutes);

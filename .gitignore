@@ -52,3 +52,4 @@ Thumbs.db
 
 src/config/auth.json
 src/assets/images/*
+.env

@@ -1,14 +1,16 @@
 import db from '../models';
 import { Request, Response } from 'express';
 import deleteFile from '../utils/file';
+import dotenv from 'dotenv';
+dotenv.config();
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-import { secret } from '../config/auth.json';
+const secret = process.env.SECRET;
 
 function generateToken(params = {}) {
-    return jwt.sign(params, secret, { expiresIn: 36000 });
+    return jwt.sign(params, String(secret), { expiresIn: 36000 });
 }
 
 class UsuarioAdminController {

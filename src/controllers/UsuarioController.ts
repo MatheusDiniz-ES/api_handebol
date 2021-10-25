@@ -1,14 +1,17 @@
 import db from '../models';
 import { Request, Response } from 'express';
+import nodemailer from 'nodemailer';
 import deleteFile from '../utils/file';
+import dotenv from 'dotenv';
+dotenv.config();
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-import { secret } from '../config/auth.json';
+const secret = process.env.SECRET;
 
-function generateToken(params = {}) {
-    return jwt.sign(params, secret, { expiresIn: 36000 });
+function generateToken(params = {}, expiresIn: number) {
+    return jwt.sign(params, String(secret), { expiresIn });
 }
 
 class UsuarioController {
@@ -141,7 +144,7 @@ class UsuarioController {
             
             usuario.senha = undefined;
 
-            response.send({ usuario, token: generateToken({ id: usuario.id, adm: false }) });
+            response.send({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000) });
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -238,6 +241,48 @@ class UsuarioController {
             usuario.destroy();
 
             return response.status(204).json();
+            
+        } catch (error: any) { return response.status(500).json({ message: error.message }) }
+    }
+
+    static async forgotPassword(request: Request, response: Response) {
+        try {
+
+            const { email } = request.body;
+
+            const usuario = await db.Usuarios.findOne({ where: { email } });
+            if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+
+            const token = generateToken({ id: usuario.id, adm: false }, 900)
+
+            var transporter = nodemailer.createTransport({
+                host: 'smtp.hostinger.com.br',
+                port: 587,
+                secure: false,
+                requireTLS: true,
+                auth: {
+                    user: 'site@evolutionsoft.com.br',
+                    pass: 'Evolution@2021'
+                },
+                tls: {
+                    rejectUnauthorized: false
+                }
+            })
+
+            var mailOptions = {
+                from: 'site@evolutionsoft.com.br',
+                to: email,
+                subject: 'Redefinir Senha - Handebol Itapê',
+                text: `Olá ${usuario.nome}.\nOuvimos dizer que você esqueceu sua senha. \nAbaixo segue o link para a redefinição de sua senha.\n\n\ Link: http://teste?token=${token}`
+            };
+
+            transporter.sendMail(mailOptions, error => {
+                if (error) {
+                    return response.status(500).json({ response: error })
+                } else {
+                    return response.status(200).json({ response: 'Enviamos o link para redefinição de senha ao seu email, por favor verifique sua caixa de entrada!!!' });
+                }
+            });
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
