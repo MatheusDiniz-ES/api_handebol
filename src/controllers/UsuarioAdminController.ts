@@ -97,8 +97,8 @@ class UsuarioAdminController {
                 return response.status(400).json({ message: "Invalid password" });
             
             admin.senha = undefined;
-            
-            response.send({ admin, token: generateToken({ id: admin.id, adm: true }) });
+
+            return response.status(200).json({ admin, token: generateToken({ id: admin.id, adm: true }) })
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }

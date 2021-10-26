@@ -61,22 +61,17 @@ class UsuarioController {
     static async createUsuario(request: Request, response: Response) {
         try {
 
-            const { usuario, senha, nome, data_nascimento, telefone, email, cpf } = request.body;
+            const { nome, data_nascimento, telefone, email, cpf } = request.body;
 
-            if(!usuario || !senha || !nome || !data_nascimento || !telefone || !email)
-                return response.status(406).json({ message: "Missing field, verify usuario, senha, nome, data_nascimento, telefone or email" });
+            if(!nome || !data_nascimento || !telefone || !email)
+                return response.status(406).json({ message: "Missing field, verify nome, data_nascimento, telefone or email" });
 
-            if (senha.length < 8)
-                return response.status(406).json({ message: "Password must be at least 8 characters." })
-            
-            if (await db.Usuarios.findOne({ where: { usuario } }))
-                return response.status(409).json({ message: "User already exists" });
-            
-            const hash = await bcrypt.hash(senha, 12);
+            if (await db.Usuarios.findOne({ where: { email } }))
+                return response.status(409).json({ message: "Email already registered" });
             
             const novoUsuario = await db.Usuarios.create({
-                usuario,
-                senha: hash,
+                usuario: null,
+                senha: null,
                 nome,
                 data_nascimento,
                 telefone,
@@ -85,6 +80,7 @@ class UsuarioController {
                 status: 2
             })
 
+            novoUsuario.usuario = undefined;
             novoUsuario.senha = undefined;
 
             return response.status(201).json(novoUsuario);
@@ -144,7 +140,7 @@ class UsuarioController {
             
             usuario.senha = undefined;
 
-            response.send({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000) });
+            return response.status(200).json({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000) })
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -206,6 +202,32 @@ class UsuarioController {
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
 
+    static async updatePassword(request: Request, response: Response) {
+        try {
+
+            const { usuarioId } = request.params;
+            const { senha: novaSenha } = request.body;
+
+            if(!novaSenha)
+                return response.status(406).json({ message: "Missing field, verify 'senha'" });
+
+            if (novaSenha.length < 8)
+                return response.status(406).json({ message: "Password must be at least 8 characters." })
+
+            const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
+            if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+
+            const hash = await bcrypt.hash(novaSenha, 12);
+
+            await usuario.update({ senha: hash });
+
+            usuario.senha = undefined;
+
+            return response.status(200).json(usuario);
+            
+        } catch (error: any) { return response.status(500).json({ message: error.message }) }
+    }
+
     static async changeStatus(request: Request, response: Response) {
         try {
 
@@ -221,6 +243,35 @@ class UsuarioController {
             const updatedUsuario = await usuario.update({ status });
 
             return response.status(200).json(updatedUsuario);
+            
+        } catch (error: any) { return response.status(500).json({ message: error.message }) }
+    }
+
+    static async acceptUsuario(request: Request, response: Response) {
+        try {
+
+            const { adm } = request.headers;
+            if (!adm) return response.status(401).json({ message: "Requires administrator privileges" })
+
+            const { usuarioId } = request.params;
+            const { usuario, senha } = request.body;
+
+            if (senha.length < 8)
+                return response.status(406).json({ message: "Password must be at least 8 characters." })
+            
+            if (await db.Usuarios.findOne({ where: { usuario } }))
+                return response.status(409).json({ message: "User already exists" });
+
+            const user = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
+            if (!user) return response.status(404).json({ message: "Usuario not found" });
+
+            const hash = await bcrypt.hash(senha, 12);
+
+            await user.update({ usuario, senha: hash });
+
+            user.senha = undefined;
+            
+            return response.status(200).json(user);
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -255,14 +306,17 @@ class UsuarioController {
 
             const token = generateToken({ id: usuario.id, adm: false }, 900)
 
+            var senha = Math.floor(Math.random() * 999999);
+            const hash = await bcrypt.hash(""+senha, 12);
+
             var transporter = nodemailer.createTransport({
                 host: 'smtp.hostinger.com.br',
                 port: 587,
                 secure: false,
                 requireTLS: true,
                 auth: {
-                    user: 'site@evolutionsoft.com.br',
-                    pass: 'Evolution@2021'
+                    user: 'api@evolutionsoft.com.br',
+                    pass: 'Api@2021'
                 },
                 tls: {
                     rejectUnauthorized: false
@@ -270,17 +324,21 @@ class UsuarioController {
             })
 
             var mailOptions = {
-                from: 'site@evolutionsoft.com.br',
+                from: 'api@evolutionsoft.com.br',
                 to: email,
                 subject: 'Redefinir Senha - Handebol Itapê',
-                text: `Olá ${usuario.nome}.\nOuvimos dizer que você esqueceu sua senha. \nAbaixo segue o link para a redefinição de sua senha.\n\n\ Link: http://teste?token=${token}`
+                text: `Olá ${usuario.nome}.\nOuvimos dizer que você esqueceu sua senha, então criamos uma nova pra você. \nSegue abaixo sua nova senha.\n\n\ Senha: ${senha}`
             };
 
             transporter.sendMail(mailOptions, error => {
                 if (error) {
                     return response.status(500).json({ response: error })
                 } else {
-                    return response.status(200).json({ response: 'Enviamos o link para redefinição de senha ao seu email, por favor verifique sua caixa de entrada!!!' });
+                    Promise.resolve(usuario.update({ senha: hash })).then(() => {
+
+                        return response.status(200).json({ response: 'Enviamos uma nova senha ao seu email, por favor verifique sua caixa de entrada!!!' });
+                    })
+
                 }
             });
             
