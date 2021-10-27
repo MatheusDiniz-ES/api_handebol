@@ -6,7 +6,40 @@ class CupomController {
     static async getCupons(request: Request, response: Response) {
         try {
 
-            const cupons = await db.Cupons.findAll();
+            const cupons = await db.Cupons.findAll({
+                include: [
+                    {
+                        model: db.Fornecedores,
+                        as: 'fornecedor',
+                        attributes: ['nome_empresa', 'imagem']
+                    }
+                ]
+            });
+
+            // for(let i = 0; i < cupons.length; i++) {
+            //     console.log(cupons[i].toJSON().fornecedor.imagem);
+            //     cupons[i].toJSON().fornecedor.imagem = cupons[i].toJSON().fornecedor.imagem ? Buffer.from(cupons[i].toJSON().fornecedor.imagem).toString("ascii") : ""
+            // }
+
+            // await cupons.forEach((cupom: any) => {
+            //     console.log(cupom.toJSON().fornecedor.imagem);
+                
+            //     cupom.toJSON().fornecedor.imagem = cupom.toJSON().fornecedor.imagem ? Buffer.from(cupom.toJSON().fornecedor.imagem).toString("ascii") : "abc"
+            //     console.log(cupom.toJSON().fornecedor.imagem);
+            // })
+
+            // Promise.resolve(() => {
+            //     cupons.forEach((cupom: any) => {
+            //         console.log(cupom.toJSON().fornecedor.imagem);
+                    
+            //         cupom.toJSON().fornecedor.imagem = cupom.toJSON().fornecedor.imagem ? Buffer.from(cupom.toJSON().fornecedor.imagem).toString("ascii") : "abc"
+            //         console.log(cupom.toJSON().fornecedor.imagem);
+            //     })
+            // }).then(resp => {
+            //     return response.status(200).json({ message: "foi" });
+            // })
+
+            // console.log(cupons[2].toJSON().fornecedor.imagem);
 
             return response.status(200).json(cupons);
             

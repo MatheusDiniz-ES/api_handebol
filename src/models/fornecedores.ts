@@ -34,6 +34,7 @@ module.exports = (sequelize: any, DataTypes: any) => {
     facebook: DataTypes.STRING,
     instagram: DataTypes.STRING,
     whatsapp: DataTypes.STRING,
+    imagem: DataTypes.BLOB('long'),
     status: DataTypes.BOOLEAN
   }, {
     sequelize,

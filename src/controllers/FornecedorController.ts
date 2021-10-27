@@ -1,5 +1,6 @@
 import db from '../models';
 import { Request, Response } from 'express';
+import fs from 'fs';
 
 class FornecedorController {
 
@@ -32,6 +33,8 @@ class FornecedorController {
             const { adm } = request.headers;
             if (!adm) return response.status(401).json({ message: "Requires administrator privileges" })
 
+            const file = request.file;
+
             const {
                 nome_empresa,
                 cnpj,
@@ -50,6 +53,8 @@ class FornecedorController {
 
             if (!nome_empresa || !cnpj || !rua || !bairro || !numero || !cep  || !cidade || !estado || !telefone)
                 return response.status(406).json({ message: "Missing fields. Check nome_empresa, cnpj, rua, bairro, numero, cep, cidade, estado or telefone" })
+
+            const imagem = file ? Buffer.from(fs.readFileSync(file.path)).toString("base64") : null;
             
             const novoFornecedor = await db.Fornecedores.create({
                 nome_empresa,
@@ -65,6 +70,7 @@ class FornecedorController {
                 facebook,
                 instagram,
                 whatsapp,
+                imagem,
                 status: 1
             })
 

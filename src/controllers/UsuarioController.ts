@@ -2,6 +2,7 @@ import db from '../models';
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import deleteFile from '../utils/file';
+import fs from 'fs';
 import { Op } from 'sequelize';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -23,6 +24,7 @@ class UsuarioController {
             const usuarios = await db.Usuarios.findAll();
 
             usuarios.map((user: { senha: undefined }) => user.senha = undefined)
+            usuarios.map((user: { imagem_perfil: undefined }) => user.imagem_perfil = undefined)
 
             return response.status(200).json(usuarios);
             
@@ -37,7 +39,10 @@ class UsuarioController {
             const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
             if (!usuario) return response.status(404).json({ message: "Usuario not found" });
 
+            const img = Buffer.from(usuario.imagem_perfil).toString("ascii")
+
             usuario.senha = undefined;
+            usuario.imagem_perfil = img;
 
             return response.status(200).json(usuario);
             
@@ -215,19 +220,29 @@ class UsuarioController {
         try {
 
             const { usuarioId } = request.params;
-            const file = request.file;
+            // const file = request.file;
+            const { imagem } = request.body;
 
-            if (!file) return response.status(406).json({ message: 'File error' });
+            // if (!file) return response.status(406).json({ message: 'File error' });
+            if (!imagem) return response.status(406).json({ message: 'Missing image' });
 
             const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
             if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+            
+            // const b64 = Buffer.from(fs.readFileSync(file.path)).toString("base64")
 
-            if (usuario.imagem_perfil) deleteFile(usuario.imagem_perfil);
+            // if (usuario.imagem_perfil) deleteFile(usuario.imagem_perfil);
 
-            usuario.imagem_perfil = file.path;
-            usuario.save();
+            // usuario.imagem_perfil = file.path;
+            // usuario.imagem_perfil = b64;
+            // usuario.save();
 
-            return response.status(200).json(usuario);
+            const updatedUser = await usuario.update({ imagem_perfil: imagem });
+
+            updatedUser.senha = undefined;
+            updatedUser.imagem_perfil = Buffer.from(updatedUser.imagem_perfil).toString("ascii");
+
+            return response.status(200).json(updatedUser);
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }

@@ -19,7 +19,7 @@ module.exports = (sequelize: any, DataTypes: any) => {
     },
     usuario: DataTypes.STRING,
     senha: DataTypes.STRING,
-    imagem_perfil: DataTypes.STRING,
+    imagem_perfil: DataTypes.BLOB('long'),
     nome: DataTypes.STRING,
     data_nascimento: DataTypes.DATEONLY,
     telefone: DataTypes.STRING,
