@@ -2,6 +2,7 @@ import db from '../models';
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import deleteFile from '../utils/file';
+import { Op } from 'sequelize';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -58,12 +59,31 @@ class UsuarioController {
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
 
+    static async getUsuariosAceitos(request: Request, response: Response) {
+        try {
+
+            const usuarios = await db.Usuarios.findAll({
+                where: {
+                    [Op.or]: [
+                        { status: 0 },
+                        { status: 1 }
+                    ]
+                } 
+            });
+
+            usuarios.map((user: { senha: undefined }) => user.senha = undefined)
+
+            return response.status(200).json(usuarios);
+            
+        } catch (error: any) { return response.status(500).json({ message: error.message }) }
+    }
+
     static async createUsuario(request: Request, response: Response) {
         try {
 
-            const { nome, data_nascimento, telefone, email, cpf } = request.body;
+            const { nome, data_nascimento, telefone, email, cpf, genero, tipo } = request.body;
 
-            if(!nome || !data_nascimento || !telefone || !email)
+            if(!nome || !data_nascimento || !telefone || !email || !tipo)
                 return response.status(406).json({ message: "Missing field, verify nome, data_nascimento, telefone or email" });
 
             if (await db.Usuarios.findOne({ where: { email } }))
@@ -77,6 +97,8 @@ class UsuarioController {
                 telefone,
                 email,
                 cpf,
+                genero,
+                tipo,
                 status: 2
             })
 
@@ -94,7 +116,7 @@ class UsuarioController {
             const { adm } = request.headers;
             if (!adm) return response.status(401).json({ message: "Requires administrator privileges" })
 
-            const { usuario, senha, nome, data_nascimento, telefone, email, cpf } = request.body;
+            const { usuario, senha, nome, data_nascimento, telefone, email, cpf, genero, tipo, data_validade } = request.body;
 
             if(!usuario || !senha || !nome || !data_nascimento || !telefone || !email)
                 return response.status(406).json({ message: "Missing field, verify usuario, senha, nome, data_nascimento, telefone or email" });
@@ -104,6 +126,9 @@ class UsuarioController {
             
             if (await db.Usuarios.findOne({ where: { usuario } }))
                 return response.status(409).json({ message: "User already exists" });
+            
+            if (await db.Usuarios.findOne({ where: { email } }))
+                return response.status(409).json({ message: "Email already registered" });
             
             const hash = await bcrypt.hash(senha, 12);
             
@@ -115,6 +140,9 @@ class UsuarioController {
                 telefone,
                 email,
                 cpf,
+                genero,
+                tipo,
+                data_validade,
                 status: 1
             })
 
@@ -130,17 +158,17 @@ class UsuarioController {
 
             const usuarioInfo = request.body;
 
-            if (!usuarioInfo.usuario) return response.status(404).json({ message: "Missing usuario field" });
+            if (!usuarioInfo.usuario) return response.status(400).json({ message: "Missing usuario field", status: 400 });
 
             const usuario = await db.Usuarios.findOne({ where: { usuario: usuarioInfo.usuario } })
-            if (!usuario) return response.status(404).json({ message: 'User not found' });
+            if (!usuario) return response.status(404).json({ message: 'User not found', status: 404 });
 
             if (!await bcrypt.compare(usuarioInfo.senha, usuario.senha))
-                return response.status(400).json({ message: "Invalid password" });
+                return response.status(400).json({ message: "Invalid password", status: 400 });
             
             usuario.senha = undefined;
 
-            return response.status(200).json({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000) })
+            return response.status(200).json({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000), status: 200 })
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -149,26 +177,28 @@ class UsuarioController {
         try {
 
             const { usuarioId } = request.params;
-            const { usuario, senha, nome, telefone, email } = request.body;
+            const { usuario, nome, telefone, email } = request.body;
 
-            if(!usuario || !senha || !nome || !telefone || !email)
+            if(!nome || !telefone || !email)
                 return response.status(406).json({ message: "Missing field, verify usuario, senha, nome, data_nascimento, telefone or email" });
-
-            if (senha.length < 8)
-                return response.status(406).json({ message: "Password must be at least 8 characters." })
             
             const user = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
-            if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+            if (!user) return response.status(404).json({ message: "Usuario not found" });
 
-            const verificaUsuario = await db.Usuarios.findOne({ where: { usuario } })
-            if (verificaUsuario && verificaUsuario.id != user.id)
-                return response.status(409).json({ message: "User already exists" });
-            
-            const hash = await bcrypt.hash(senha, 12);
+            if (usuario) {
+                const verificaUsuario = await db.Usuarios.findOne({ where: { usuario } })
+                if (verificaUsuario && verificaUsuario.id != user.id)
+                    return response.status(409).json({ message: "User already exists" });
+            }
+
+            if (email) {
+                const verificaEmail = await db.Usuarios.findOne({ where: { email } })
+                if (verificaEmail && verificaEmail.id != user.id)
+                    return response.status(409).json({ message: "Email already registered" });
+            }
 
             const updatedUsuario = await user.update({
                 usuario,
-                senha: hash,
                 nome,
                 telefone,
                 email
@@ -254,7 +284,7 @@ class UsuarioController {
             if (!adm) return response.status(401).json({ message: "Requires administrator privileges" })
 
             const { usuarioId } = request.params;
-            const { usuario, senha } = request.body;
+            const { usuario, senha, data_validade } = request.body;
 
             if (senha.length < 8)
                 return response.status(406).json({ message: "Password must be at least 8 characters." })
@@ -267,7 +297,7 @@ class UsuarioController {
 
             const hash = await bcrypt.hash(senha, 12);
 
-            await user.update({ usuario, senha: hash });
+            await user.update({ usuario, senha: hash, status: 1, data_validade });
 
             user.senha = undefined;
             

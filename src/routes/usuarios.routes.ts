@@ -16,6 +16,7 @@ usuariosRoutes.use(auth);
 
 usuariosRoutes.get('/', UsuarioController.getUsuarios);
 usuariosRoutes.get('/analise', UsuarioController.getUsersByAnaliseStatus);
+usuariosRoutes.get('/accepted', UsuarioController.getUsuariosAceitos);
 usuariosRoutes.get('/:usuarioId', UsuarioController.getUsuarioById);
 usuariosRoutes.post('/adminCreate', UsuarioController.createUsuarioWithAdmin);
 usuariosRoutes.put('/:usuarioId', UsuarioController.updateUser);
