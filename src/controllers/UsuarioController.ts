@@ -39,7 +39,7 @@ class UsuarioController {
             const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
             if (!usuario) return response.status(404).json({ message: "Usuario not found" });
 
-            const img = Buffer.from(usuario.imagem_perfil).toString("ascii")
+            const img = usuario.imagem_perfil ? Buffer.from(usuario.imagem_perfil).toString("ascii") : ""
 
             usuario.senha = undefined;
             usuario.imagem_perfil = img;
@@ -88,8 +88,8 @@ class UsuarioController {
 
             const { nome, data_nascimento, telefone, email, cpf, genero, tipo } = request.body;
 
-            if(!nome || !data_nascimento || !telefone || !email || !tipo)
-                return response.status(406).json({ message: "Missing field, verify nome, data_nascimento, telefone or email" });
+            if(!nome || !data_nascimento || !telefone || !email)
+                return response.status(400).json({ message: "Missing field, verify nome, data_nascimento, telefone or email" });
 
             if (await db.Usuarios.findOne({ where: { email } }))
                 return response.status(409).json({ message: "Email already registered" });
@@ -103,7 +103,7 @@ class UsuarioController {
                 email,
                 cpf,
                 genero,
-                tipo,
+                tipo: null,
                 status: 2
             })
 
@@ -349,8 +349,6 @@ class UsuarioController {
             const usuario = await db.Usuarios.findOne({ where: { email } });
             if (!usuario) return response.status(404).json({ message: "Usuario not found" });
 
-            const token = generateToken({ id: usuario.id, adm: false }, 900)
-
             var senha = Math.floor(Math.random() * 999999);
             const hash = await bcrypt.hash(""+senha, 12);
 
@@ -361,7 +359,7 @@ class UsuarioController {
                 requireTLS: true,
                 auth: {
                     user: 'api@evolutionsoft.com.br',
-                    pass: 'Api@2021'
+                    pass: '@#EvolutionApi@2021#@'
                 },
                 tls: {
                     rejectUnauthorized: false

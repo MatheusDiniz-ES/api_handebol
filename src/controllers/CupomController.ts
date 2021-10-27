@@ -11,37 +11,35 @@ class CupomController {
                     {
                         model: db.Fornecedores,
                         as: 'fornecedor',
-                        attributes: ['nome_empresa', 'imagem']
+                        attributes: ['nome_empresa', 'imagem', 'facebook', 'instagram', 'whatsapp']
                     }
                 ]
             });
 
-            // for(let i = 0; i < cupons.length; i++) {
-            //     console.log(cupons[i].toJSON().fornecedor.imagem);
-            //     cupons[i].toJSON().fornecedor.imagem = cupons[i].toJSON().fornecedor.imagem ? Buffer.from(cupons[i].toJSON().fornecedor.imagem).toString("ascii") : ""
-            // }
+            let c: any = [];
 
-            // await cupons.forEach((cupom: any) => {
-            //     console.log(cupom.toJSON().fornecedor.imagem);
-                
-            //     cupom.toJSON().fornecedor.imagem = cupom.toJSON().fornecedor.imagem ? Buffer.from(cupom.toJSON().fornecedor.imagem).toString("ascii") : "abc"
-            //     console.log(cupom.toJSON().fornecedor.imagem);
-            // })
+            cupons.forEach((cupom: any) => {
 
-            // Promise.resolve(() => {
-            //     cupons.forEach((cupom: any) => {
-            //         console.log(cupom.toJSON().fornecedor.imagem);
-                    
-            //         cupom.toJSON().fornecedor.imagem = cupom.toJSON().fornecedor.imagem ? Buffer.from(cupom.toJSON().fornecedor.imagem).toString("ascii") : "abc"
-            //         console.log(cupom.toJSON().fornecedor.imagem);
-            //     })
-            // }).then(resp => {
-            //     return response.status(200).json({ message: "foi" });
-            // })
+                c.push({
+                    id: cupom.id,
+                    id_fornecedor: cupom.id_fornecedor,
+                    codigo: cupom.codigo,
+                    titulo: cupom.titulo,
+                    valor_desconto: cupom.valor_desconto,
+                    descricao: cupom.descricao,
+                    validade: cupom.validade,
+                    status: cupom.status,
+                    createdAt: cupom.createdAt,
+                    updatedAt: cupom.updatedAt,
+                    nome_empresa: cupom.fornecedor.nome_empresa,
+                    facebook: cupom.fornecedor.facebook,
+                    instagram: cupom.fornecedor.instagram,
+                    whatsapp: cupom.fornecedor.whatsapp,
+                    imagem: cupom.fornecedor.imagem ? Buffer.from(cupom.fornecedor.imagem).toString("ascii") : ""
+                })
+            });
 
-            // console.log(cupons[2].toJSON().fornecedor.imagem);
-
-            return response.status(200).json(cupons);
+            return response.status(200).json(c);
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
