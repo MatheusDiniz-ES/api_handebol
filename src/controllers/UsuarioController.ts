@@ -169,9 +169,11 @@ class UsuarioController {
             if (!usuario) return response.status(404).json({ message: 'User not found', status: 404 });
 
             if (!await bcrypt.compare(usuarioInfo.senha, usuario.senha))
-                return response.status(400).json({ message: "Invalid password", status: 400 });
+                return response.status(403).json({ message: "Invalid password", status: 403 });
             
             usuario.senha = undefined;
+
+            usuario.imagem_perfil = Buffer.from(usuario.imagem_perfil).toString("ascii");
 
             return response.status(200).json({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000), status: 200 })
             
@@ -182,36 +184,40 @@ class UsuarioController {
         try {
 
             const { usuarioId } = request.params;
-            const { usuario, nome, telefone, email } = request.body;
+            const { usuario: clientUser, nome, telefone, email, genero, tipo, data_validade } = request.body;
 
-            if(!nome || !telefone || !email)
-                return response.status(406).json({ message: "Missing field, verify usuario, senha, nome, data_nascimento, telefone or email" });
+            if(!telefone || !email)
+                return response.status(406).json({ message: "Missing field, verify usuario, senha, nome, data_nascimento, telefone or email", status: 406 });
             
             const user = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
-            if (!user) return response.status(404).json({ message: "Usuario not found" });
+            if (!user) return response.status(404).json({ message: "Usuario not found", status: 404 });
 
-            if (usuario) {
-                const verificaUsuario = await db.Usuarios.findOne({ where: { usuario } })
+            if (clientUser) {
+                const verificaUsuario = await db.Usuarios.findOne({ where: { usuario: clientUser } })
                 if (verificaUsuario && verificaUsuario.id != user.id)
-                    return response.status(409).json({ message: "User already exists" });
+                    return response.status(409).json({ message: "User already exists", status: 409 });
             }
 
             if (email) {
                 const verificaEmail = await db.Usuarios.findOne({ where: { email } })
                 if (verificaEmail && verificaEmail.id != user.id)
-                    return response.status(409).json({ message: "Email already registered" });
+                    return response.status(409).json({ message: "Email already registered", status:409 });
             }
 
-            const updatedUsuario = await user.update({
-                usuario,
+            const usuario = await user.update({
+                usuario: clientUser,
                 nome,
                 telefone,
-                email
+                email,
+                genero,
+                tipo,
+                data_validade
             })
 
-            updatedUsuario.senha = undefined;
+            usuario.senha = undefined;
 
-            return response.status(200).json(updatedUsuario);
+
+            return response.status(200).json({ usuario, status: 200 });
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -224,25 +230,25 @@ class UsuarioController {
             const { imagem } = request.body;
 
             // if (!file) return response.status(406).json({ message: 'File error' });
-            if (!imagem) return response.status(406).json({ message: 'Missing image' });
+            if (!imagem) return response.status(400).json({ message: 'Missing image', status: 400 });
 
-            const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
-            if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+            const user = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
+            if (!user) return response.status(404).json({ message: "Usuario not found", status: 404 });
             
             // const b64 = Buffer.from(fs.readFileSync(file.path)).toString("base64")
 
             // if (usuario.imagem_perfil) deleteFile(usuario.imagem_perfil);
 
-            // usuario.imagem_perfil = file.path;
-            // usuario.imagem_perfil = b64;
-            // usuario.save();
+            // user.imagem_perfil = file.path;
+            // user.imagem_perfil = b64;
+            // user.save();
 
-            const updatedUser = await usuario.update({ imagem_perfil: imagem });
+            const usuario = await user.update({ imagem_perfil: imagem });
 
-            updatedUser.senha = undefined;
-            updatedUser.imagem_perfil = Buffer.from(updatedUser.imagem_perfil).toString("ascii");
+            usuario.senha = undefined;
+            usuario.imagem_perfil = Buffer.from(usuario.imagem_perfil).toString("ascii");
 
-            return response.status(200).json(updatedUser);
+            return response.status(200).json({ usuario, status: 200 });
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -251,24 +257,28 @@ class UsuarioController {
         try {
 
             const { usuarioId } = request.params;
-            const { senha: novaSenha } = request.body;
+            const { senha, novaSenha } = request.body;
 
             if(!novaSenha)
-                return response.status(406).json({ message: "Missing field, verify 'senha'" });
+                return response.status(400).json({ message: "Missing field, verify 'senha'", status: 400 });
 
             if (novaSenha.length < 8)
-                return response.status(406).json({ message: "Password must be at least 8 characters." })
+                return response.status(406).json({ message: "Password must be at least 8 characters.", status: 406 })
 
             const usuario = await db.Usuarios.findOne({ where: { id: Number(usuarioId) } });
-            if (!usuario) return response.status(404).json({ message: "Usuario not found" });
+            if (!usuario) return response.status(404).json({ message: "Usuario not found", status: 404 });
+
+            if (!await bcrypt.compare(senha, usuario.senha))
+                return response.status(403).json({ message: "Invalid password", status: 403 });
 
             const hash = await bcrypt.hash(novaSenha, 12);
 
             await usuario.update({ senha: hash });
 
             usuario.senha = undefined;
+            usuario.imagem_perfil = undefined;
 
-            return response.status(200).json(usuario);
+            return response.status(200).json({ usuario, status: 200 });
             
         } catch (error: any) { return response.status(500).json({ message: error.message }) }
     }
@@ -299,7 +309,7 @@ class UsuarioController {
             if (!adm) return response.status(401).json({ message: "Requires administrator privileges" })
 
             const { usuarioId } = request.params;
-            const { usuario, senha, data_validade } = request.body;
+            const { usuario, senha, tipo, data_validade } = request.body;
 
             if (senha.length < 8)
                 return response.status(406).json({ message: "Password must be at least 8 characters." })
@@ -312,7 +322,7 @@ class UsuarioController {
 
             const hash = await bcrypt.hash(senha, 12);
 
-            await user.update({ usuario, senha: hash, status: 1, data_validade });
+            await user.update({ usuario, senha: hash, status: 1, tipo, data_validade });
 
             user.senha = undefined;
             

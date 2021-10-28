@@ -3,7 +3,7 @@ const fornecedoresRoutes = Router();
 
 import upload from '../config/uploadConfig';
 import multer from 'multer';
-const uploadImage = multer(upload('./assets/images/usuarios'));
+const uploadImage = multer(upload('./assets/images/fornecedores'));
 
 import FornecedorController from '../controllers/FornecedorController';
 import auth from '../middleware/auth';
