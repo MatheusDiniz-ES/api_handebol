@@ -173,7 +173,9 @@ class UsuarioController {
             
             usuario.senha = undefined;
 
-            usuario.imagem_perfil = Buffer.from(usuario.imagem_perfil).toString("ascii");
+            if(usuario.imagem_perfil){
+                usuario.imagem_perfil = Buffer.from(usuario.imagem_perfil).toString("ascii");
+            }
 
             return response.status(200).json({ usuario, token: generateToken({ id: usuario.id, adm: false }, 36000), status: 200 })
             
