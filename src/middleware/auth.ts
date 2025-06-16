@@ -9,7 +9,9 @@ export default (request: any, response: any, next: any) => {
 
   const parts = auth.split(' ');
 
-//   if (!parts === 2) return response.status(401).json({ message: 'Token error' });
+  if (parts.length !== 2) {
+    return response.status(401).json({ message: 'Token error' });
+  }
 
   const [format, token] = parts;
 
