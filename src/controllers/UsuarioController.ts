@@ -313,7 +313,7 @@ class UsuarioController {
             const { usuarioId } = request.params;
             const { usuario, senha, tipo, data_validade } = request.body;
 
-            if (senha.length < 8)
+            if (!senha || senha.length < 8)
                 return response.status(406).json({ message: "Password must be at least 8 characters." })
             
             if (await db.Usuarios.findOne({ where: { usuario } }))
